@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Calendar</title>
+    <style>
+        /* EDIT THIS - Base font size */
+        body {
+            font-size: 18px; /* Increased from default 16px */
+        }
+        
+        #calendarContainer {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+        
+        #calendarImage {
+            width: 100vw;
+            height: auto;
+            max-width: 100%;
+            display: block;
+            cursor: pointer;
+        }
+        
+        #editorOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #editorContainer {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            width: 80%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow: auto;
+        }
+        
+        /* EDIT THIS - Text editor font size */
+        #taskEditor {
+            font-size: 20px; /* Bigger font for editor */
+            width: 100%;
+            height: 300px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            resize: vertical;
+            font-family: monospace;
+            margin: 15px 0;
+            box-sizing: border-box;
+        }
+        
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        /* EDIT THIS - Title font size */
+        .editor-title {
+            font-size: 28px; /* Bigger title */
+            font-weight: bold;
+            color: #333;
+        }
+        
+        /* EDIT THIS - Location info font size */
+        .location-info {
+            font-size: 22px; /* Bigger location text */
+            color: #555;
+            margin-bottom: 15px;
+        }
+        
+        .editor-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        /* EDIT THIS - Button font size */
+        .editor-btn {
+            font-size: 18px; /* Bigger button text */
+            padding: 12px 25px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        
+        #saveButton {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        #saveButton:hover {
+            background-color: #45a049;
+        }
+        
+        #cancelButton {
+            background-color: #f1f1f1;
+            color: #333;
+        }
+        
+        #cancelButton:hover {
+            background-color: #ddd;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            /* EDIT THIS - Close button size */
+            font-size: 32px; /* Bigger close button */
+            cursor: pointer;
+            color: #888;
+            padding: 0;
+            line-height: 1;
+        }
+        
+        .close-btn:hover {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div id="calendarContainer">
+        <img id="calendarImage" src="{{ url_for('static', filename='calendar.png') }}" alt="Current Calendar">
+    </div>
+    
+    <div id="editorOverlay">
+        <div id="editorContainer">
+            <div class="editor-header">
+                <div class="editor-title">Edit Task</div>
+                <button class="close-btn" id="closeButton">&times;</button>
+            </div>
+            <div class="location-info">Day: <span id="locDisplay"></span></div>
+            <textarea id="taskEditor" placeholder="Enter task details here..."></textarea>
+            <div class="editor-buttons">
+                <button class="editor-btn" id="cancelButton">Cancel</button>
+                <button class="editor-btn" id="saveButton">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // [Previous JavaScript code remains exactly the same]
+        document.getElementById('calendarImage').addEventListener('click', function(event) {
+            const rect = this.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            const xPercent = (x / rect.width) * 100;
+            const yPercent = (y / rect.height) * 100;
+            
+            fetch('/check_task', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    x: xPercent,
+                    y: yPercent,
+                    imageWidth: rect.width,
+                    imageHeight: rect.height
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('editorOverlay').style.display = 'flex';
+                    document.getElementById('locDisplay').textContent = data.loc;
+                    document.getElementById('taskEditor').value = data.task || '';
+                    document.getElementById('taskEditor').focus();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+        
+        document.getElementById('saveButton').addEventListener('click', function() {
+            const loc = document.getElementById('locDisplay').textContent;
+            const task = document.getElementById('taskEditor').value;
+            
+            fetch('/edit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    loc: loc,
+                    task: task
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('editorOverlay').style.display = 'none';
+                    window.location.reload();
+                } else {
+                    alert('Error updating task: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating task');
+            });
+        });
+        
+        document.getElementById('closeButton').addEventListener('click', function() {
+            document.getElementById('editorOverlay').style.display = 'none';
+        });
+        
+        document.getElementById('cancelButton').addEventListener('click', function() {
+            document.getElementById('editorOverlay').style.display = 'none';
+        });
+        
+        document.getElementById('editorOverlay').addEventListener('click', function(e) {
+            if (e.target === this) {
+                document.getElementById('editorOverlay').style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
