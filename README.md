@@ -1,5 +1,4 @@
 # PersonalCalendar
-# PersonalCalendar
 **Introduction**<br>
 I developed a personal calendar use Python Flask and Html.<br>
 You can click a day to edit your task today.<br>
